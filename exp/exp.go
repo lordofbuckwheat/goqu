@@ -378,6 +378,7 @@ type (
 		Aliaseable
 		Rangeable
 		Comparable
+		Orderable
 		Isable
 		Inable
 		Likeable

@@ -66,3 +66,6 @@ func (sfe sqlFunctionExpression) Over(we WindowExpression) SQLWindowFunctionExpr
 func (sfe sqlFunctionExpression) OverName(windowName IdentifierExpression) SQLWindowFunctionExpression {
 	return NewSQLWindowFunctionExpression(sfe, windowName, nil)
 }
+
+func (sfe sqlFunctionExpression) Asc() OrderedExpression  { return asc(sfe) }
+func (sfe sqlFunctionExpression) Desc() OrderedExpression { return desc(sfe) }
