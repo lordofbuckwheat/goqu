@@ -3,9 +3,9 @@ package goqu
 import (
 	"strings"
 
-	"github.com/doug-martin/goqu/v9/exp"
-	"github.com/doug-martin/goqu/v9/internal/sb"
-	"github.com/doug-martin/goqu/v9/sqlgen"
+	"github.com/lordofbuckwheat/goqu/v9/exp"
+	"github.com/lordofbuckwheat/goqu/v9/internal/sb"
+	"github.com/lordofbuckwheat/goqu/v9/sqlgen"
 )
 
 type (

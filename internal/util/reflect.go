@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/doug-martin/goqu/v9/internal/errors"
-	"github.com/doug-martin/goqu/v9/internal/tag"
+	"github.com/lordofbuckwheat/goqu/v9/internal/errors"
+	"github.com/lordofbuckwheat/goqu/v9/internal/tag"
 )
 
 type (
