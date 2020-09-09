@@ -8,7 +8,7 @@ goqu an idiomatch SQL builder, and query package.
      |___/          |_|
 
 
-Please see https://github.com/doug-martin/goqu for an introduction to goqu.
+Please see https://github.com/lordofbuckwheat/goqu for an introduction to goqu.
 */
 package goqu
 

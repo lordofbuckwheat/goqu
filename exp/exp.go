@@ -172,6 +172,16 @@ type (
 		Aliased() Expression
 		// Returns the alias value as an identiier expression
 		GetAs() IdentifierExpression
+
+		// Returns a new IdentifierExpression with the specified schema
+		Schema(string) IdentifierExpression
+		// Returns a new IdentifierExpression with the specified table
+		Table(string) IdentifierExpression
+		// Returns a new IdentifierExpression with the specified column
+		Col(interface{}) IdentifierExpression
+		// Returns a new IdentifierExpression with the column set to *
+		//   I("my_table").All() //"my_table".*
+		All() IdentifierExpression
 	}
 
 	BooleanOperation  int
@@ -432,6 +442,23 @@ type (
 		Inherit(parent string) WindowExpression
 		PartitionBy(cols ...interface{}) WindowExpression
 		OrderBy(cols ...interface{}) WindowExpression
+	}
+	CaseElse interface {
+		Result() interface{}
+	}
+	CaseWhen interface {
+		Condition() interface{}
+		Result() interface{}
+	}
+	CaseExpression interface {
+		Expression
+		Aliaseable
+		GetValue() interface{}
+		GetWhens() []CaseWhen
+		GetElse() CaseElse
+		Value(val interface{}) CaseExpression
+		When(condition, result interface{}) CaseExpression
+		Else(result interface{}) CaseExpression
 	}
 )
 

@@ -24,17 +24,17 @@ const (
 		"`bool` TINYINT NOT NULL ," +
 		"`bytes` BLOB NOT NULL" +
 		");"
-	insertDefaultReords = "INSERT INTO `entry` (`int`, `float`, `string`, `time`, `bool`, `bytes`) VALUES" +
-		"(0, 0.000000, '0.000000', '2015-02-22 18:19:55', 1,  '0.000000')," +
-		"(1, 0.100000, '0.100000', '2015-02-22 19:19:55', 0, '0.100000')," +
-		"(2, 0.200000, '0.200000', '2015-02-22 20:19:55', 1,  '0.200000')," +
-		"(3, 0.300000, '0.300000', '2015-02-22 21:19:55', 0, '0.300000')," +
-		"(4, 0.400000, '0.400000', '2015-02-22 22:19:55', 1,  '0.400000')," +
-		"(5, 0.500000, '0.500000', '2015-02-22 23:19:55', 0, '0.500000')," +
-		"(6, 0.600000, '0.600000', '2015-02-23 00:19:55', 1,  '0.600000')," +
-		"(7, 0.700000, '0.700000', '2015-02-23 01:19:55', 0, '0.700000')," +
-		"(8, 0.800000, '0.800000', '2015-02-23 02:19:55', 1,  '0.800000')," +
-		"(9, 0.900000, '0.900000', '2015-02-23 03:19:55', 0, '0.900000');"
+	insertDefaultRecords = "INSERT INTO `entry` (`int`, `float`, `string`, `time`, `bool`, `bytes`) VALUES" +
+		"(0, 0.000000, '0.000000', '2015-02-22T18:19:55.000000000-00:00', 1,  '0.000000')," +
+		"(1, 0.100000, '0.100000', '2015-02-22T19:19:55.000000000-00:00', 0, '0.100000')," +
+		"(2, 0.200000, '0.200000', '2015-02-22T20:19:55.000000000-00:00', 1,  '0.200000')," +
+		"(3, 0.300000, '0.300000', '2015-02-22T21:19:55.000000000-00:00', 0, '0.300000')," +
+		"(4, 0.400000, '0.400000', '2015-02-22T22:19:55.000000000-00:00', 1,  '0.400000')," +
+		"(5, 0.500000, '0.500000', '2015-02-22T23:19:55.000000000-00:00', 0, '0.500000')," +
+		"(6, 0.600000, '0.600000', '2015-02-23T00:19:55.000000000-00:00', 1,  '0.600000')," +
+		"(7, 0.700000, '0.700000', '2015-02-23T01:19:55.000000000-00:00', 0, '0.700000')," +
+		"(8, 0.800000, '0.800000', '2015-02-23T02:19:55.000000000-00:00', 1,  '0.800000')," +
+		"(9, 0.900000, '0.900000', '2015-02-23T03:19:55.000000000-00:00', 0, '0.900000');"
 )
 
 var dbURI = ":memory:"
@@ -71,7 +71,7 @@ func (st *sqlite3Suite) SetupTest() {
 	if _, err := st.db.Exec(createTable); err != nil {
 		panic(err)
 	}
-	if _, err := st.db.Exec(insertDefaultReords); err != nil {
+	if _, err := st.db.Exec(insertDefaultRecords); err != nil {
 		panic(err)
 	}
 }
@@ -118,7 +118,7 @@ func (st *sqlite3Suite) TestQuery() {
 	st.NoError(ds.Order(goqu.C("id").Asc()).ScanStructs(&entries))
 	st.Len(entries, 10)
 	floatVal := float64(0)
-	baseDate, err := time.Parse(DialectOptions().TimeFormat, "2015-02-22 18:19:55")
+	baseDate, err := time.Parse(DialectOptions().TimeFormat, "2015-02-22T18:19:55.000000000-00:00")
 	st.NoError(err)
 	for i, entry := range entries {
 		f := fmt.Sprintf("%f", floatVal)
@@ -128,7 +128,7 @@ func (st *sqlite3Suite) TestQuery() {
 		st.Equal(f, entry.String)
 		st.Equal([]byte(f), entry.Bytes)
 		st.Equal(i%2 == 0, entry.Bool)
-		st.Equal(baseDate.Add(time.Duration(i)*time.Hour), entry.Time)
+		st.Equal(baseDate.Add(time.Duration(i)*time.Hour).Unix(), entry.Time.Unix())
 		floatVal += float64(0.1)
 	}
 	entries = entries[0:0]
@@ -215,7 +215,7 @@ func (st *sqlite3Suite) TestQuery_Prepared() {
 	st.NoError(ds.Order(goqu.C("id").Asc()).ScanStructs(&entries))
 	st.Len(entries, 10)
 	floatVal := float64(0)
-	baseDate, err := time.Parse(DialectOptions().TimeFormat, "2015-02-22 18:19:55")
+	baseDate, err := time.Parse(DialectOptions().TimeFormat, "2015-02-22T18:19:55.000000000-00:00")
 	st.NoError(err)
 	for i, entry := range entries {
 		f := fmt.Sprintf("%f", floatVal)
@@ -225,7 +225,7 @@ func (st *sqlite3Suite) TestQuery_Prepared() {
 		st.Equal(f, entry.String)
 		st.Equal([]byte(f), entry.Bytes)
 		st.Equal(i%2 == 0, entry.Bool)
-		st.Equal(baseDate.Add(time.Duration(i)*time.Hour), entry.Time)
+		st.Equal(baseDate.Add(time.Duration(i)*time.Hour).Unix(), entry.Time.Unix())
 		floatVal += float64(0.1)
 	}
 	entries = entries[0:0]
@@ -311,7 +311,7 @@ func (st *sqlite3Suite) TestQuery_ValueExpressions() {
 		entry
 		BoolValue bool `db:"bool_value"`
 	}
-	expectedDate, err := time.Parse("2006-01-02 15:04:05", "2015-02-22 19:19:55")
+	expectedDate, err := time.Parse("2006-01-02T15:04:05.000000000-00:00", "2015-02-22T19:19:55.000000000-00:00")
 	st.NoError(err)
 	ds := st.db.From("entry").Select(goqu.Star(), goqu.V(true).As("bool_value")).Where(goqu.Ex{"int": 1})
 	var we wrappedEntry
@@ -397,7 +397,6 @@ func (st *sqlite3Suite) TestInsert_returning() {
 	e := entry{Int: 10, Float: 1.000000, String: "1.000000", Time: now, Bool: true, Bytes: []byte("1.000000")}
 	_, err := ds.Insert().Rows(e).Returning(goqu.Star()).Executor().ScanStruct(&e)
 	st.Error(err)
-
 }
 
 func (st *sqlite3Suite) TestUpdate() {
@@ -455,6 +454,68 @@ func (st *sqlite3Suite) TestDelete() {
 	id = 0
 	_, err = ds.Where(goqu.C("id").Eq(e.ID)).Delete().Returning("id").Executor().ScanVal(&id)
 	st.EqualError(err, "goqu: dialect does not support RETURNING clause [dialect=sqlite3]")
+}
+
+func (st *sqlite3Suite) TestInsert_OnConflict() {
+	ds := st.db.From("entry")
+	now := time.Now()
+
+	// insert new record with ID = 11
+	e := entry{Int: 11, Float: 1.100000, String: "1.100000", Time: now, Bool: false, Bytes: []byte("1.100000")}
+	_, err := ds.Insert().Rows(e).OnConflict(goqu.DoNothing()).Executor().Exec()
+	st.NoError(err)
+
+	var entryActual entry
+	_, err = ds.Where(goqu.C("id").Eq(11)).ScanStruct(&entryActual)
+	st.NoError(err)
+	st.Equal("1.100000", entryActual.String)
+
+	// duplicate with ON CONFLICT DO NOTHING should not be actually inserted
+	_, err = ds.Insert().Rows(
+		goqu.Record{
+			"id":     11,
+			"int":    99999999,
+			"float":  "0.99999999",
+			"string": "99999999",
+			"time":   now,
+			"bool":   true,
+			"bytes":  []byte("0.99999999"),
+		},
+	).OnConflict(goqu.DoNothing()).Executor().Exec()
+	st.NoError(err)
+
+	_, err = ds.Where(goqu.C("id").Eq(11)).ScanStruct(&entryActual)
+	st.NoError(err)
+	st.Equal("1.100000", entryActual.String)
+
+	// UPSERT record with ID primary key value conflict
+	_, err = ds.Insert().Rows(
+		goqu.Record{
+			"id":     11,
+			"int":    11,
+			"float":  "1.100000",
+			"string": "1.100000",
+			"time":   now,
+			"bool":   true,
+			"bytes":  []byte("1.100000"),
+		},
+	).OnConflict(goqu.DoUpdate("id", goqu.Record{"string": "upsert"})).Executor().Exec()
+	st.NoError(err)
+
+	_, err = ds.Where(goqu.C("id").Eq(11)).ScanStruct(&entryActual)
+	st.NoError(err)
+	st.Equal("upsert", entryActual.String)
+
+	// UPDATE ... ON CONFLICT (...) WHERE ... SET ... should result in error for now
+	entries := []entry{
+		{Int: 8, Float: 6.100000, String: "6.100000", Time: now, Bytes: []byte("6.100000")},
+		{Int: 9, Float: 7.200000, String: "7.200000", Time: now, Bytes: []byte("7.200000")},
+	}
+	_, err = ds.Insert().
+		Rows(entries).
+		OnConflict(goqu.DoUpdate("id", goqu.Record{"string": "upsert"}).Where(goqu.C("id").Eq(9))).
+		Executor().Exec()
+	st.EqualError(err, "goqu: dialect does not support upsert with where clause [dialect=sqlite3]")
 }
 
 func TestSqlite3Suite(t *testing.T) {

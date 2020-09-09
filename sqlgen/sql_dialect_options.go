@@ -102,6 +102,8 @@ type (
 		WindowOverFragment []byte
 		// The SQL ORDER BY clause fragment(DEFAULT=[]byte(" ORDER BY "))
 		OrderByFragment []byte
+		// The SQL FETCH fragment(DEFAULT=[]byte(" "))
+		FetchFragment []byte
 		// The SQL LIMIT BY clause fragment(DEFAULT=[]byte(" LIMIT "))
 		LimitFragment []byte
 		// The SQL OFFSET BY clause fragment(DEFAULT=[]byte(" OFFSET "))
@@ -120,7 +122,7 @@ type (
 		SkipLockedFragment []byte
 		// The SQL AS fragment when aliasing an Expression(DEFAULT=[]byte(" AS "))
 		AsFragment []byte
-		/// The SQL LATERAL fragment used for LATERAL joins
+		// The SQL LATERAL fragment used for LATERAL joins
 		LateralFragment []byte
 		// The quote rune to use when quoting identifiers(DEFAULT='"')
 		QuoteRune rune
@@ -152,12 +154,22 @@ type (
 		IntersectAllFragment []byte
 		// The CAST keyword to use when casting a value (DEFAULT=[]byte("CAST"))
 		CastFragment []byte
+		// The CASE keyword to use when when creating a CASE statement (DEFAULT=[]byte("CASE "))
+		CaseFragment []byte
+		// The WHEN keyword to use when when creating a CASE statement (DEFAULT=[]byte(" WHEN "))
+		WhenFragment []byte
+		// The THEN keyword to use when when creating a CASE statement (DEFAULT=[]byte(" THEN "))
+		ThenFragment []byte
+		// The ELSE keyword to use when when creating a CASE statement (DEFAULT=[]byte(" ELSE "))
+		ElseFragment []byte
+		// The End keyword to use when when creating a CASE statement (DEFAULT=[]byte(" END"))
+		EndFragment []byte
 		// The quote rune to use when quoting string literals (DEFAULT='\'')
 		StringQuote rune
 		// The operator to use when setting values in an update statement (DEFAULT='=')
 		SetOperatorRune rune
-		// The placeholder rune to use when generating a non interpolated statement (DEFAULT='?')
-		PlaceHolderRune rune
+		// The placeholder fragment to use when generating a non interpolated statement (DEFAULT=[]byte"?")
+		PlaceHolderFragment []byte
 		// Empty string (DEFAULT="")
 		EmptyString string
 		// Comma rune (DEFAULT=',')
@@ -299,6 +311,7 @@ type (
 const (
 	CommonTableSQLFragment = iota
 	SelectSQLFragment
+	SelectWithLimitSQLFragment
 	FromSQLFragment
 	JoinSQLFragment
 	WhereSQLFragment
@@ -306,6 +319,7 @@ const (
 	HavingSQLFragment
 	CompoundsSQLFragment
 	OrderSQLFragment
+	OrderWithOffsetFetchSQLFragment
 	LimitSQLFragment
 	OffsetSQLFragment
 	ForSQLFragment
@@ -322,7 +336,7 @@ const (
 	WindowSQLFragment
 )
 
-// nolint:gocyclo
+// nolint:gocyclo // simple type to string conversion
 func (sf SQLFragmentType) String() string {
 	switch sf {
 	case CommonTableSQLFragment:
@@ -420,6 +434,7 @@ func DefaultDialectOptions() *SQLDialectOptions {
 		WindowOrderByFragment:     []byte("ORDER BY "),
 		WindowOverFragment:        []byte(" OVER "),
 		OrderByFragment:           []byte(" ORDER BY "),
+		FetchFragment:             []byte(" "),
 		LimitFragment:             []byte(" LIMIT "),
 		OffsetFragment:            []byte(" OFFSET "),
 		ForUpdateFragment:         []byte(" FOR UPDATE "),
@@ -444,21 +459,26 @@ func DefaultDialectOptions() *SQLDialectOptions {
 		ConflictDoUpdateFragment:  []byte(" DO UPDATE SET "),
 		ConflictDoNothingFragment: []byte(" DO NOTHING"),
 		CastFragment:              []byte("CAST"),
+		CaseFragment:              []byte("CASE "),
+		WhenFragment:              []byte(" WHEN "),
+		ThenFragment:              []byte(" THEN "),
+		ElseFragment:              []byte(" ELSE "),
+		EndFragment:               []byte(" END"),
 		Null:                      []byte("NULL"),
 		True:                      []byte("TRUE"),
 		False:                     []byte("FALSE"),
 
-		PlaceHolderRune: '?',
-		QuoteRune:       '"',
-		StringQuote:     '\'',
-		SetOperatorRune: '=',
-		CommaRune:       ',',
-		SpaceRune:       ' ',
-		LeftParenRune:   '(',
-		RightParenRune:  ')',
-		StarRune:        '*',
-		PeriodRune:      '.',
-		EmptyString:     "",
+		PlaceHolderFragment: []byte("?"),
+		QuoteRune:           '"',
+		StringQuote:         '\'',
+		SetOperatorRune:     '=',
+		CommaRune:           ',',
+		SpaceRune:           ' ',
+		LeftParenRune:       '(',
+		RightParenRune:      ')',
+		StarRune:            '*',
+		PeriodRune:          '.',
+		EmptyString:         "",
 
 		BooleanOperatorLookup: map[exp.BooleanOperation][]byte{
 			exp.EqOp:             []byte("="),

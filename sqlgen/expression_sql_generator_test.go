@@ -135,7 +135,7 @@ func (esgs *expressionSQLGeneratorSuite) TestGenerate_UnsupportedType() {
 func (esgs *expressionSQLGeneratorSuite) TestGenerate_IncludePlaceholderNum() {
 	opts := DefaultDialectOptions()
 	opts.IncludePlaceholderNum = true
-	opts.PlaceHolderRune = '$'
+	opts.PlaceHolderFragment = []byte("$")
 	ex := exp.Ex{
 		"a": 1,
 		"b": true,
@@ -380,7 +380,6 @@ func (esgs *expressionSQLGeneratorSuite) TestGenerate_ColumnList() {
 }
 
 func (esgs *expressionSQLGeneratorSuite) TestGenerate_ExpressionList() {
-
 	andEl := exp.NewExpressionList(
 		exp.AndType,
 		exp.NewIdentifierExpression("", "", "a").Eq("b"),
@@ -667,7 +666,6 @@ func (esgs *expressionSQLGeneratorSuite) TestGenerate_RangeExpression() {
 }
 
 func (esgs *expressionSQLGeneratorSuite) TestGenerate_OrderedExpression() {
-
 	asc := exp.NewIdentifierExpression("", "", "a").Asc()
 	ascNf := exp.NewIdentifierExpression("", "", "a").Asc().NullsFirst()
 	ascNl := exp.NewIdentifierExpression("", "", "a").Asc().NullsLast()
@@ -708,7 +706,6 @@ func (esgs *expressionSQLGeneratorSuite) TestGenerate_UpdateExpression() {
 }
 
 func (esgs *expressionSQLGeneratorSuite) TestGenerate_SQLFunctionExpression() {
-
 	min := exp.NewSQLFunctionExpression("MIN", exp.NewIdentifierExpression("", "", "a"))
 	coalesce := exp.NewSQLFunctionExpression("COALESCE", exp.NewIdentifierExpression("", "", "a"), "a")
 	esgs.assertCases(
@@ -1136,6 +1133,110 @@ func (esgs *expressionSQLGeneratorSuite) TestGenerate_LateralExpression() {
 		NewExpressionSQLGenerator("test", do),
 		expressionTestCase{val: lateralExp, err: "goqu: dialect does not support lateral expressions [dialect=test]"},
 		expressionTestCase{val: lateralExp, err: "goqu: dialect does not support lateral expressions [dialect=test]", isPrepared: true},
+	)
+}
+
+func (esgs *expressionSQLGeneratorSuite) TestGenerate_CaseExpression() {
+	ident := exp.NewIdentifierExpression("", "", "col")
+	valueCase := exp.NewCaseExpression().
+		Value(ident).
+		When(true, "one").
+		When(false, "two")
+	valueElseCase := exp.NewCaseExpression().
+		Value(ident).
+		When(1, "one").
+		When(2, "two").
+		Else("three")
+	searchCase := exp.NewCaseExpression().
+		When(ident.Gt(1), exp.NewLiteralExpression("? - 1", ident)).
+		When(ident.Lt(0), exp.NewLiteralExpression("? + 1", ident))
+	searchElseCase := exp.NewCaseExpression().
+		When(ident.Gt(1), exp.NewLiteralExpression("? - 1", ident)).
+		When(ident.Lt(0), exp.NewLiteralExpression("? + 1", ident)).
+		Else(ident)
+
+	esgs.assertCases(
+		NewExpressionSQLGenerator("test", DefaultDialectOptions()),
+		expressionTestCase{val: valueCase, sql: `CASE "col" WHEN TRUE THEN 'one' WHEN FALSE THEN 'two' END`},
+		expressionTestCase{
+			val:        valueCase,
+			sql:        `CASE "col" WHEN ? THEN ? WHEN ? THEN ? END`,
+			isPrepared: true,
+			args:       []interface{}{true, "one", false, "two"},
+		},
+
+		expressionTestCase{val: valueElseCase, sql: `CASE "col" WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'three' END`},
+		expressionTestCase{
+			val:        valueElseCase,
+			sql:        `CASE "col" WHEN ? THEN ? WHEN ? THEN ? ELSE ? END`,
+			isPrepared: true,
+			args:       []interface{}{int64(1), "one", int64(2), "two", "three"},
+		},
+
+		expressionTestCase{val: searchCase, sql: `CASE  WHEN ("col" > 1) THEN "col" - 1 WHEN ("col" < 0) THEN "col" + 1 END`},
+		expressionTestCase{
+			val:        searchCase,
+			sql:        `CASE  WHEN ("col" > ?) THEN "col" - 1 WHEN ("col" < ?) THEN "col" + 1 END`,
+			isPrepared: true,
+			args:       []interface{}{int64(1), int64(0)},
+		},
+
+		expressionTestCase{val: searchElseCase, sql: `CASE  WHEN ("col" > 1) THEN "col" - 1 WHEN ("col" < 0) THEN "col" + 1 ELSE "col" END`},
+		expressionTestCase{
+			val:        searchElseCase,
+			sql:        `CASE  WHEN ("col" > ?) THEN "col" - 1 WHEN ("col" < ?) THEN "col" + 1 ELSE "col" END`,
+			isPrepared: true,
+			args:       []interface{}{int64(1), int64(0)},
+		},
+		expressionTestCase{
+			val: exp.NewCaseExpression(),
+			err: "goqu: when conditions not found for case statement",
+		},
+	)
+
+	opts := DefaultDialectOptions()
+	opts.CaseFragment = []byte("case ")
+	opts.WhenFragment = []byte(" when ")
+	opts.ThenFragment = []byte(" then ")
+	opts.ElseFragment = []byte(" else ")
+	opts.EndFragment = []byte(" end")
+	esgs.assertCases(
+		NewExpressionSQLGenerator("test", opts),
+		expressionTestCase{val: valueCase, sql: `case "col" when TRUE then 'one' when FALSE then 'two' end`},
+		expressionTestCase{
+			val:        valueCase,
+			sql:        `case "col" when ? then ? when ? then ? end`,
+			isPrepared: true,
+			args:       []interface{}{true, "one", false, "two"},
+		},
+
+		expressionTestCase{val: valueElseCase, sql: `case "col" when 1 then 'one' when 2 then 'two' else 'three' end`},
+		expressionTestCase{
+			val:        valueElseCase,
+			sql:        `case "col" when ? then ? when ? then ? else ? end`,
+			isPrepared: true,
+			args:       []interface{}{int64(1), "one", int64(2), "two", "three"},
+		},
+
+		expressionTestCase{val: searchCase, sql: `case  when ("col" > 1) then "col" - 1 when ("col" < 0) then "col" + 1 end`},
+		expressionTestCase{
+			val:        searchCase,
+			sql:        `case  when ("col" > ?) then "col" - 1 when ("col" < ?) then "col" + 1 end`,
+			isPrepared: true,
+			args:       []interface{}{int64(1), int64(0)},
+		},
+
+		expressionTestCase{val: searchElseCase, sql: `case  when ("col" > 1) then "col" - 1 when ("col" < 0) then "col" + 1 else "col" end`},
+		expressionTestCase{
+			val:        searchElseCase,
+			sql:        `case  when ("col" > ?) then "col" - 1 when ("col" < ?) then "col" + 1 else "col" end`,
+			isPrepared: true,
+			args:       []interface{}{int64(1), int64(0)},
+		},
+		expressionTestCase{
+			val: exp.NewCaseExpression(),
+			err: "goqu: when conditions not found for case statement",
+		},
 	)
 }
 

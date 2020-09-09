@@ -36,7 +36,7 @@ type (
 // This is the common entry point into goqu.
 //
 // dialect: This is the adapter dialect, you should see your database adapter for the string to use. Built in adapters
-// can be found at https://github.com/doug-martin/goqu/tree/master/adapters
+// can be found at https://github.com/lordofbuckwheat/goqu/tree/master/adapters
 //
 // db: A sql.Db to use for querying the database
 //      import (

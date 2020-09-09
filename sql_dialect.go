@@ -2,6 +2,7 @@ package goqu
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/lordofbuckwheat/goqu/v9/exp"
 	"github.com/lordofbuckwheat/goqu/v9/internal/sb"
@@ -22,7 +23,7 @@ type (
 	}
 	// The default adapter. This class should be used when building a new adapter. When creating a new adapter you can
 	// either override methods, or more typically update default values.
-	// See (github.com/doug-martin/goqu/adapters/postgres)
+	// See (github.com/lordofbuckwheat/goqu/adapters/postgres)
 	sqlDialect struct {
 		dialect        string
 		dialectOptions *SQLDialectOptions
@@ -37,6 +38,7 @@ type (
 var (
 	dialects              = make(map[string]SQLDialect)
 	DefaultDialectOptions = sqlgen.DefaultDialectOptions
+	dialectsMu            sync.RWMutex
 )
 
 func init() {
@@ -44,11 +46,15 @@ func init() {
 }
 
 func RegisterDialect(name string, do *SQLDialectOptions) {
+	dialectsMu.Lock()
+	defer dialectsMu.Unlock()
 	lowerName := strings.ToLower(name)
 	dialects[lowerName] = newDialect(lowerName, do)
 }
 
 func DeregisterDialect(name string) {
+	dialectsMu.Lock()
+	defer dialectsMu.Unlock()
 	delete(dialects, strings.ToLower(name))
 }
 

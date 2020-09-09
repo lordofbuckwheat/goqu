@@ -22,7 +22,7 @@ type (
 	}
 	// The default adapter. This class should be used when building a new adapter. When creating a new adapter you can
 	// either override methods, or more typically update default values.
-	// See (github.com/doug-martin/goqu/adapters/postgres)
+	// See (github.com/lordofbuckwheat/goqu/adapters/postgres)
 	expressionSQLGenerator struct {
 		dialect        string
 		dialectOptions *SQLDialectOptions
@@ -37,8 +37,8 @@ var (
 	errEmptyIdentifier = errors.New(
 		`a empty identifier was encountered, please specify a "schema", "table" or "column"`,
 	)
-	errUnexpectedNamedWindow                  = errors.New(`unexpected named window function`)
-	errNoReturnColumnsForAppendableExpression = errors.New(`no return columns found for appendable expression`)
+	errUnexpectedNamedWindow = errors.New(`unexpected named window function`)
+	errEmptyCaseWhens        = errors.New(`when conditions not found for case statement`)
 )
 
 func errUnsupportedExpressionType(e exp.Expression) error {
@@ -144,6 +144,7 @@ func (esg *expressionSQLGenerator) reflectSQL(b sb.SQLBuilder, val interface{}) 
 	}
 }
 
+// nolint:gocyclo // not complex just long
 func (esg *expressionSQLGenerator) expressionSQL(b sb.SQLBuilder, expression exp.Expression) {
 	switch e := expression.(type) {
 	case exp.ColumnListExpression:
@@ -180,6 +181,8 @@ func (esg *expressionSQLGenerator) expressionSQL(b sb.SQLBuilder, expression exp
 		esg.commonTableExpressionSQL(b, e)
 	case exp.CompoundExpression:
 		esg.compoundExpressionSQL(b, e)
+	case exp.CaseExpression:
+		esg.caseExpressionSQL(b, e)
 	case exp.Ex:
 		esg.expressionMapSQL(b, e)
 	case exp.ExOr:
@@ -191,7 +194,7 @@ func (esg *expressionSQLGenerator) expressionSQL(b sb.SQLBuilder, expression exp
 
 // Generates a placeholder (e.g. ?, $1)
 func (esg *expressionSQLGenerator) placeHolderSQL(b sb.SQLBuilder, i interface{}) {
-	b.WriteRunes(esg.dialectOptions.PlaceHolderRune)
+	b.Write(esg.dialectOptions.PlaceHolderFragment)
 	if esg.dialectOptions.IncludePlaceholderNum {
 		b.WriteStrings(strconv.FormatInt(int64(b.CurrentArgPosition()), 10))
 	}
@@ -630,7 +633,33 @@ func (esg *expressionSQLGenerator) compoundExpressionSQL(b sb.SQLBuilder, compou
 	} else {
 		compound.RHS().AppendSQL(b)
 	}
+}
 
+// Generates SQL for a CaseExpression
+func (esg *expressionSQLGenerator) caseExpressionSQL(b sb.SQLBuilder, caseExpression exp.CaseExpression) {
+	caseVal := caseExpression.GetValue()
+	whens := caseExpression.GetWhens()
+	elseResult := caseExpression.GetElse()
+
+	if len(whens) == 0 {
+		b.SetError(errEmptyCaseWhens)
+		return
+	}
+	b.Write(esg.dialectOptions.CaseFragment)
+	if caseVal != nil {
+		esg.Generate(b, caseVal)
+	}
+	for _, when := range whens {
+		b.Write(esg.dialectOptions.WhenFragment)
+		esg.Generate(b, when.Condition())
+		b.Write(esg.dialectOptions.ThenFragment)
+		esg.Generate(b, when.Result())
+	}
+	if elseResult != nil {
+		b.Write(esg.dialectOptions.ElseFragment)
+		esg.Generate(b, elseResult.Result())
+	}
+	b.Write(esg.dialectOptions.EndFragment)
 }
 
 func (esg *expressionSQLGenerator) expressionMapSQL(b sb.SQLBuilder, ex exp.Ex) {

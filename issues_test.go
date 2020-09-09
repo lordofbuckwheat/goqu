@@ -22,7 +22,7 @@ func (gis *githubIssuesSuite) AfterTest(suiteName, testName string) {
 	goqu.SetColumnRenameFunction(strings.ToLower)
 }
 
-// Test for https://github.com/doug-martin/goqu/issues/49
+// Test for https://github.com/lordofbuckwheat/goqu/issues/49
 func (gis *githubIssuesSuite) TestIssue49() {
 	dialect := goqu.Dialect("default")
 
@@ -43,9 +43,8 @@ func (gis *githubIssuesSuite) TestIssue49() {
 	gis.Equal(`SELECT * FROM "table"`, sql)
 }
 
-// Test for https://github.com/doug-martin/goqu/issues/115
+// Test for https://github.com/lordofbuckwheat/goqu/issues/115
 func (gis *githubIssuesSuite) TestIssue115() {
-
 	type TestStruct struct {
 		Field string
 	}
@@ -57,12 +56,12 @@ func (gis *githubIssuesSuite) TestIssue115() {
 	gis.EqualError(err, `goqu: a empty identifier was encountered, please specify a "schema", "table" or "column"`)
 }
 
-// Test for https://github.com/doug-martin/goqu/issues/118
+// Test for https://github.com/lordofbuckwheat/goqu/issues/118
 func (gis *githubIssuesSuite) TestIssue118_withEmbeddedStructWithoutExportedFields() {
 	// struct is in a custom package
 	type SimpleRole struct {
 		sync.RWMutex
-		permissions []string // nolint:structcheck,unused
+		permissions []string // nolint:structcheck,unused //needed for test
 	}
 
 	// .....
@@ -125,15 +124,14 @@ func (gis *githubIssuesSuite) TestIssue118_withEmbeddedStructWithoutExportedFiel
 			`"created_at"='0001-01-01T00:00:00Z',"id"='',"key"='user',"name"='User role' RETURNING "id"`,
 		sql,
 	)
-
 }
 
-// Test for https://github.com/doug-martin/goqu/issues/118
+// Test for https://github.com/lordofbuckwheat/goqu/issues/118
 func (gis *githubIssuesSuite) TestIssue118_withNilEmbeddedStructWithExportedFields() {
 	// struct is in a custom package
 	type SimpleRole struct {
 		sync.RWMutex
-		permissions []string // nolint:structcheck,unused
+		permissions []string // nolint:structcheck,unused // needed for test
 		IDStr       string
 	}
 
@@ -202,12 +200,10 @@ func (gis *githubIssuesSuite) TestIssue118_withNilEmbeddedStructWithExportedFiel
 			`"created_at"='0001-01-01T00:00:00Z',"id"='',"idstr"='',"key"='user',"name"='User role' RETURNING "id"`,
 		sql,
 	)
-
 }
 
-// Test for https://github.com/doug-martin/goqu/issues/118
+// Test for https://github.com/lordofbuckwheat/goqu/issues/118
 func (gis *githubIssuesSuite) TestIssue140() {
-
 	sql, arg, err := goqu.Insert(`test`).Returning().ToSQL()
 	gis.NoError(err)
 	gis.Empty(arg)
@@ -249,10 +245,9 @@ func (gis *githubIssuesSuite) TestIssue140() {
 		`DELETE FROM "test"`,
 		sql,
 	)
-
 }
 
-// Test for https://github.com/doug-martin/goqu/issues/164
+// Test for https://github.com/lordofbuckwheat/goqu/issues/164
 func (gis *githubIssuesSuite) TestIssue164() {
 	insertDs := goqu.Insert("foo").Rows(goqu.Record{"user_id": 10}).Returning("id")
 
@@ -328,7 +323,7 @@ func (gis *githubIssuesSuite) TestIssue164() {
 	)
 }
 
-// Test for https://github.com/doug-martin/goqu/issues/177
+// Test for https://github.com/lordofbuckwheat/goqu/issues/177
 func (gis *githubIssuesSuite) TestIssue177() {
 	ds := goqu.Dialect("postgres").
 		From("ins1").
@@ -366,7 +361,7 @@ func (gis *githubIssuesSuite) TestIssue177() {
 	gis.Equal(args, []interface{}{"email@email.com", "active", "XXX-XXX-XXXX", int64(1001)})
 }
 
-// Test for https://github.com/doug-martin/goqu/issues/183
+// Test for https://github.com/lordofbuckwheat/goqu/issues/183
 func (gis *githubIssuesSuite) TestIssue184() {
 	expectedErr := fmt.Errorf("an error")
 	testCases := []struct {
@@ -405,7 +400,7 @@ func (gis *githubIssuesSuite) TestIssue184() {
 	}
 }
 
-// Test for https://github.com/doug-martin/goqu/issues/185
+// Test for https://github.com/lordofbuckwheat/goqu/issues/185
 func (gis *githubIssuesSuite) TestIssue185() {
 	mDb, sqlMock, err := sqlmock.New()
 	gis.NoError(err)
@@ -425,7 +420,34 @@ func (gis *githubIssuesSuite) TestIssue185() {
 	var i []int
 	gis.NoError(ds.ScanValsContext(ctx, &i))
 	gis.Equal([]int{1, 2, 3, 4}, i)
+}
 
+// Test for https://github.com/lordofbuckwheat/goqu/issues/203
+func (gis *githubIssuesSuite) TestIssue203() {
+	// Schema definitions.
+	authSchema := goqu.S("company_auth")
+
+	// Table definitions
+	usersTable := authSchema.Table("users")
+
+	u := usersTable.As("u")
+
+	ds := goqu.From(u).Select(
+		u.Col("id"),
+		u.Col("name"),
+		u.Col("created_at"),
+		u.Col("updated_at"),
+	)
+
+	sql, args, err := ds.ToSQL()
+	gis.NoError(err)
+	gis.Equal(`SELECT "u"."id", "u"."name", "u"."created_at", "u"."updated_at" FROM "company_auth"."users" AS "u"`, sql)
+	gis.Empty(args, []interface{}{})
+
+	sql, args, err = ds.Prepared(true).ToSQL()
+	gis.NoError(err)
+	gis.Equal(`SELECT "u"."id", "u"."name", "u"."created_at", "u"."updated_at" FROM "company_auth"."users" AS "u"`, sql)
+	gis.Empty(args, []interface{}{})
 }
 
 func TestGithubIssuesSuite(t *testing.T) {

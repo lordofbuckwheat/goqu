@@ -1,4 +1,4 @@
-// nolint:lll
+// nolint:lll // sql statements are long
 package goqu_test
 
 import (
@@ -125,7 +125,6 @@ func ExampleAnd_withExOr() {
 }
 
 func ExampleC() {
-
 	sql, args, _ := goqu.From("test").
 		Select(goqu.C("*")).
 		ToSQL()
@@ -494,7 +493,6 @@ func ExampleDefault() {
 	// Output:
 	// INSERT INTO "items" ("address", "name") VALUES (DEFAULT, DEFAULT) []
 	// INSERT INTO "items" ("address", "name") VALUES (DEFAULT, DEFAULT) []
-
 }
 
 func ExampleDoNothing() {
@@ -515,7 +513,6 @@ func ExampleDoNothing() {
 	// Output:
 	// INSERT INTO "items" ("address", "name") VALUES ('111 Address', 'bob') ON CONFLICT DO NOTHING []
 	// INSERT INTO "items" ("address", "name") VALUES (?, ?) ON CONFLICT DO NOTHING [111 Address bob]
-
 }
 
 func ExampleDoUpdate() {
@@ -1231,7 +1228,6 @@ func ExampleUsing_withIdentifier() {
 }
 
 func ExampleEx() {
-
 	ds := goqu.From("items").Where(
 		goqu.Ex{
 			"col1": "a",
@@ -1291,7 +1287,7 @@ func ExampleExOr() {
 	).ToSQL()
 	fmt.Println(sql, args)
 
-	// nolint:lll
+	// nolint:lll // sql statements are long
 	// Output:
 	// SELECT * FROM "items" WHERE (("col1" = 'a') OR ("col2" = 1) OR ("col3" IS TRUE) OR ("col4" IS FALSE) OR ("col5" IS NULL) OR ("col6" IN ('a', 'b', 'c'))) []
 }
@@ -1333,11 +1329,9 @@ func ExampleExOr_withOp() {
 	// SELECT * FROM "items" WHERE (("col1" > 1) OR ("col2" >= 1) OR ("col3" < 1) OR ("col4" <= 1))
 	// SELECT * FROM "items" WHERE (("col1" LIKE 'a%') OR ("col2" NOT LIKE 'a%') OR ("col3" ILIKE 'a%') OR ("col4" NOT ILIKE 'a%'))
 	// SELECT * FROM "items" WHERE (("col1" ~ '^(a|b)') OR ("col2" !~ '^(a|b)') OR ("col3" ~* '^(a|b)') OR ("col4" !~* '^(a|b)'))
-
 }
 
 func ExampleOp_comparisons() {
-
 	ds := goqu.From("test").Where(goqu.Ex{
 		"a": 10,
 		"b": goqu.Op{"neq": 10},
@@ -1798,4 +1792,112 @@ func ExampleLateral_join() {
 	// Output:
 	// SELECT "e"."id", "max_entry"."max_int", "max_id"."id" FROM "entry" AS "e" INNER JOIN LATERAL (SELECT MAX("int") AS "max_int" FROM "entry" WHERE ("time" < "e"."time")) AS "max_entry" ON TRUE INNER JOIN LATERAL (SELECT "id" FROM "entry" WHERE ("int" = "max_entry"."max_int")) AS "max_id" ON TRUE []
 	// SELECT "e"."id", "max_entry"."max_int", "max_id"."id" FROM "entry" AS "e" INNER JOIN LATERAL (SELECT MAX("int") AS "max_int" FROM "entry" WHERE ("time" < "e"."time")) AS "max_entry" ON ? INNER JOIN LATERAL (SELECT "id" FROM "entry" WHERE ("int" = "max_entry"."max_int")) AS "max_id" ON ? [true true]
+}
+
+func ExampleAny() {
+	ds := goqu.From("test").Where(goqu.Ex{
+		"id": goqu.Any(goqu.From("other").Select("test_id")),
+	})
+	sql, args, _ := ds.ToSQL()
+	fmt.Println(sql, args)
+
+	sql, args, _ = ds.Prepared(true).ToSQL()
+	fmt.Println(sql, args)
+	// Output:
+	// SELECT * FROM "test" WHERE ("id" = ANY ((SELECT "test_id" FROM "other"))) []
+	// SELECT * FROM "test" WHERE ("id" = ANY ((SELECT "test_id" FROM "other"))) []
+}
+
+func ExampleAll() {
+	ds := goqu.From("test").Where(goqu.Ex{
+		"id": goqu.All(goqu.From("other").Select("test_id")),
+	})
+	sql, args, _ := ds.ToSQL()
+	fmt.Println(sql, args)
+
+	sql, args, _ = ds.Prepared(true).ToSQL()
+	fmt.Println(sql, args)
+	// Output:
+	// SELECT * FROM "test" WHERE ("id" = ALL ((SELECT "test_id" FROM "other"))) []
+	// SELECT * FROM "test" WHERE ("id" = ALL ((SELECT "test_id" FROM "other"))) []
+}
+
+func ExampleCase_search() {
+	ds := goqu.From("test").
+		Select(
+			goqu.C("col"),
+			goqu.Case().
+				When(goqu.C("col").Gt(0), true).
+				When(goqu.C("col").Lte(0), false).
+				As("is_gt_zero"),
+		)
+	sql, args, _ := ds.ToSQL()
+	fmt.Println(sql, args)
+
+	sql, args, _ = ds.Prepared(true).ToSQL()
+	fmt.Println(sql, args)
+	// Output:
+	// SELECT "col", CASE  WHEN ("col" > 0) THEN TRUE WHEN ("col" <= 0) THEN FALSE END AS "is_gt_zero" FROM "test" []
+	// SELECT "col", CASE  WHEN ("col" > ?) THEN ? WHEN ("col" <= ?) THEN ? END AS "is_gt_zero" FROM "test" [0 true 0 false]
+}
+
+func ExampleCase_searchElse() {
+	ds := goqu.From("test").
+		Select(
+			goqu.C("col"),
+			goqu.Case().
+				When(goqu.C("col").Gt(10), "Gt 10").
+				When(goqu.C("col").Gt(20), "Gt 20").
+				Else("Bad Val").
+				As("str_val"),
+		)
+	sql, args, _ := ds.ToSQL()
+	fmt.Println(sql, args)
+
+	sql, args, _ = ds.Prepared(true).ToSQL()
+	fmt.Println(sql, args)
+	// Output:
+	// SELECT "col", CASE  WHEN ("col" > 10) THEN 'Gt 10' WHEN ("col" > 20) THEN 'Gt 20' ELSE 'Bad Val' END AS "str_val" FROM "test" []
+	// SELECT "col", CASE  WHEN ("col" > ?) THEN ? WHEN ("col" > ?) THEN ? ELSE ? END AS "str_val" FROM "test" [10 Gt 10 20 Gt 20 Bad Val]
+}
+
+func ExampleCase_value() {
+	ds := goqu.From("test").
+		Select(
+			goqu.C("col"),
+			goqu.Case().
+				Value(goqu.C("str")).
+				When("foo", "FOO").
+				When("bar", "BAR").
+				As("foo_bar_upper"),
+		)
+	sql, args, _ := ds.ToSQL()
+	fmt.Println(sql, args)
+
+	sql, args, _ = ds.Prepared(true).ToSQL()
+	fmt.Println(sql, args)
+	// Output:
+	// SELECT "col", CASE "str" WHEN 'foo' THEN 'FOO' WHEN 'bar' THEN 'BAR' END AS "foo_bar_upper" FROM "test" []
+	// SELECT "col", CASE "str" WHEN ? THEN ? WHEN ? THEN ? END AS "foo_bar_upper" FROM "test" [foo FOO bar BAR]
+}
+
+func ExampleCase_valueElse() {
+	ds := goqu.From("test").
+		Select(
+			goqu.C("col"),
+			goqu.Case().
+				Value(goqu.C("str")).
+				When("foo", "FOO").
+				When("bar", "BAR").
+				Else("Baz").
+				As("foo_bar_upper"),
+		)
+	sql, args, _ := ds.ToSQL()
+	fmt.Println(sql, args)
+
+	sql, args, _ = ds.Prepared(true).ToSQL()
+	fmt.Println(sql, args)
+	// Output:
+	// SELECT "col", CASE "str" WHEN 'foo' THEN 'FOO' WHEN 'bar' THEN 'BAR' ELSE 'Baz' END AS "foo_bar_upper" FROM "test" []
+	// SELECT "col", CASE "str" WHEN ? THEN ? WHEN ? THEN ? ELSE ? END AS "foo_bar_upper" FROM "test" [foo FOO bar BAR Baz]
 }

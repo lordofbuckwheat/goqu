@@ -15,7 +15,7 @@ type (
 	}
 	// The default adapter. This class should be used when building a new adapter. When creating a new adapter you can
 	// either override methods, or more typically update default values.
-	// See (github.com/doug-martin/goqu/adapters/postgres)
+	// See (github.com/lordofbuckwheat/goqu/adapters/postgres)
 	updateSQLGenerator struct {
 		*commonSQLGenerator
 	}
@@ -93,7 +93,6 @@ func (usg *updateSQLGenerator) UpdateBeginSQL(b sb.SQLBuilder) {
 func (usg *updateSQLGenerator) UpdateExpressionsSQL(b sb.SQLBuilder, updates ...exp.UpdateExpression) {
 	b.Write(usg.dialectOptions.SetFragment)
 	usg.UpdateExpressionSQL(b, updates...)
-
 }
 
 func (usg *updateSQLGenerator) updateTableSQL(b sb.SQLBuilder, uc exp.UpdateClauses) {
